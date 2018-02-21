@@ -1,12 +1,12 @@
 FROM ubuntu
-MAINTAINER Christian Lück <christian@lueck.tv>
+MAINTAINER Michael Huber <docker@hubermi.de>
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
-  nginx supervisor php5-fpm php5-cli php5-curl php5-gd php5-json \
-  php5-pgsql php5-mysql php5-mcrypt && apt-get clean && rm -rf /var/lib/apt/lists/*
+  nginx supervisor php-fpm php-cli php-curl php-gd php-json \
+  git php-pgsql php-mysql php-mcrypt php-xml php7.0-mbstring && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # enable the mcrypt module
-RUN php5enmod mcrypt
+RUN phpenmod mcrypt
 
 # add ttrss as the only nginx site
 ADD ttrss.nginx.conf /etc/nginx/sites-available/ttrss
@@ -14,12 +14,13 @@ RUN ln -s /etc/nginx/sites-available/ttrss /etc/nginx/sites-enabled/ttrss
 RUN rm /etc/nginx/sites-enabled/default
 
 # install ttrss and patch configuration
+
 WORKDIR /var/www
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y curl --no-install-recommends && rm -rf /var/lib/apt/lists/* \
-    && curl -SL https://tt-rss.org/gitlab/fox/tt-rss/repository/archive.tar.gz?ref=master | tar xzC /var/www --strip-components 1 \
-    && apt-get purge -y --auto-remove curl \
-    && chown www-data:www-data -R /var/www
-RUN cp config.php-dist config.php
+RUN git clone https://git.tt-rss.org/fox/tt-rss.git \
+    && mv tt-rss/* . \
+    && rm -r tt-rss
+RUN cp config.php-dist config.php && chmod 777 cache -R && chmod 777 lock && chmod 777 feed-icons -R
+RUN mkdir /run/php
 
 # expose only nginx HTTP port
 EXPOSE 80
@@ -36,3 +37,4 @@ ENV DB_PASS ttrss
 ADD configure-db.php /configure-db.php
 ADD supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 CMD php /configure-db.php && supervisord -c /etc/supervisor/conf.d/supervisord.conf
+
